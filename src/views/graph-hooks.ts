@@ -74,8 +74,10 @@ export function layout(graph: Graph, dir = 'TB') {
 }
 
 // 重新布局
-export function reLayout(graph: Graph) {
+export function reLayout(graph: Graph, isZoom = false) {
   layout(graph)
-  graph.zoomToFit()
+  if(isZoom) {
+    graph.zoomTo(0.8)
+  }
   graph.centerContent()
 }

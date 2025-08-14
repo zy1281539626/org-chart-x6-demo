@@ -21,7 +21,19 @@ let graph: Graph
 onMounted(() => {
   // 创建画布
   graph = new Graph({
+    autoResize: true,
     container: document.getElementById('container')!,
+    panning: {
+      enabled: true, // 启用画布平移
+      eventTypes: ['leftMouseDown', 'mouseWheel'], // 支持鼠标左键拖拽和滚轮平移
+    },
+    mousewheel: {
+      enabled: true, // 启用鼠标滚轮缩放
+      zoomAtMousePosition: false, // 不在鼠标位置缩放
+      factor: 1.1, // 缩放因子
+      maxScale: 3, // 最大缩放比例
+      minScale: 0.5, // 最小缩放比例
+    },
     interacting: {
       nodeMovable: true, // 启用节点移动
       magnetConnectable: false, // 禁用连接点
@@ -61,8 +73,7 @@ onMounted(() => {
 
 <style scoped>
 #container {
-  min-width: 400px;
-  min-height: 600px;
-  border: 1px solid red;
+  width: 100dvw;
+  height: 100dvh;
 }
 </style>
