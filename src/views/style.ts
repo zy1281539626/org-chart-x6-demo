@@ -30,5 +30,18 @@ export default () => {
       stroke: #B6002A !important;
       stroke-width: 2 !important;
     }
+
+    .input {
+      width: 100%;
+      height: 100%;
+      background: #ccc;
+      border:none;
+      outline:none;
+      color: #000;
+      text-align: center;
+      z-index:1;
+      font-size: 16px;
+      font-weight: 500;
+    }
   `)
 }

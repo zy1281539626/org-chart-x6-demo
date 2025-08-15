@@ -64,7 +64,91 @@ export default () => {
           y: -1,
           width: 202,
           height: 56,
-          html: '<input type="text" style="display:block;width: 100%; height: 100%; background: #ccc; border:none;outline:none; color: #000; text-align: center;z-index:1;display:none; font-size: 16px;font-weight: 500;" />',
+          html: '<input type="text" class="input" />',
+          visibility: 'hidden',
+        },
+      },
+    },
+    true,
+  )
+
+  // 幽灵节点（带阴影效果）
+  Graph.registerNode(
+    'ghost-node',
+    {
+      width: 200,
+      height: 54,
+      markup: [
+        {
+          tagName: 'defs',
+        },
+        {
+          tagName: 'rect',
+          selector: 'shadow',
+          attrs: {
+            class: 'shadow',
+          },
+        },
+        {
+          tagName: 'rect',
+          attrs: {
+            class: 'card',
+          },
+        },
+        {
+          tagName: 'text',
+          attrs: {
+            class: 'name',
+          },
+        },
+      ],
+      attrs: {
+        defs: {
+          markup: `
+            <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+              <feOffset dx="2" dy="4" result="offset"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.3"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          `,
+        },
+        '.shadow': {
+          x: 2,
+          y: 4,
+          rx: 4,
+          ry: 4,
+          refWidth: '100%',
+          refHeight: '100%',
+          fill: 'rgba(0, 0, 0, 0.15)',
+        },
+        '.card': {
+          rx: 4,
+          ry: 4,
+          refWidth: '100%',
+          refHeight: '100%',
+          fill: 'rgba(230, 247, 255, 0.9)',
+          stroke: '#007fff',
+          strokeWidth: 2,
+          strokeDasharray: '5,5',
+          pointerEvents: 'none',
+          filter: 'url(#dropshadow)',
+        },
+        '.name': {
+          refX: '50%',
+          refY: '50%',
+          fill: '#0066cc',
+          fontFamily: 'Arial',
+          fontSize: 16,
+          fontWeight: '600',
+          textAnchor: 'middle',
+          textVerticalAnchor: 'middle',
+          opacity: 0.8,
         },
       },
     },

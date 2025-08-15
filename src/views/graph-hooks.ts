@@ -6,8 +6,8 @@ export function layout(graph: Graph, dir = 'TB') {
   const nodes = graph.getNodes()
   const edges = graph.getEdges()
   const g = new dagre.graphlib.Graph()
-  // ranksep-行间距   nodesep-同一行节点间距
-  g.setGraph({ rankdir: dir, nodesep: 16, ranksep: 50 })
+  // nodesep-同一行节点间距 ranksep-行间距
+  g.setGraph({ rankdir: dir, nodesep: 50, ranksep: 100 })
   g.setDefaultEdgeLabel(() => ({}))
 
   const width = 200
@@ -76,7 +76,7 @@ export function layout(graph: Graph, dir = 'TB') {
 // 重新布局
 export function reLayout(graph: Graph, isZoom = false) {
   layout(graph)
-  if(isZoom) {
+  if (isZoom) {
     graph.zoomTo(0.8)
   }
   graph.centerContent()
