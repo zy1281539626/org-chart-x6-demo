@@ -2,13 +2,9 @@
 
 ## TODO
 
-- 移动到自身节点不显示preview
-- 已经在当前位置了，不现实preview
-- 缩小放大后，移动鼠标不跟随节点
-- 移动节点
+- 排序不对
 - 数据导入导出
 - tools
-
 
 This template should help get you started developing with Vue 3 in Vite.
 

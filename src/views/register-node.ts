@@ -1,12 +1,13 @@
 import { Graph } from '@antv/x6'
+import { NODE_DIMENSIONS, ICON, OPACITY } from './constants'
 
 export default () => {
   // 自定义节点
   Graph.registerNode(
     'org-node',
     {
-      width: 200,
-      height: 54,
+      width: NODE_DIMENSIONS.STANDARD_WIDTH,
+      height: NODE_DIMENSIONS.STANDARD_HEIGHT,
       markup: [
         {
           tagName: 'rect',
@@ -43,8 +44,8 @@ export default () => {
           pointerEvents: 'visiblePainted',
         },
         '.addIcon': {
-          x: 100 - 12,
-          y: 54,
+          x: NODE_DIMENSIONS.STANDARD_WIDTH / 2 - ICON.OFFSET,
+          y: NODE_DIMENSIONS.STANDARD_HEIGHT,
           width: 24,
           height: 24,
           event: 'node:add',
@@ -60,10 +61,10 @@ export default () => {
           textVerticalAnchor: 'middle',
         },
         'input-container': {
-          x: -1,
-          y: -1,
-          width: 202,
-          height: 56,
+          x: 0,
+          y: 0,
+          width: NODE_DIMENSIONS.STANDARD_WIDTH,
+          height: NODE_DIMENSIONS.STANDARD_HEIGHT,
           html: '<input type="text" class="input" />',
           visibility: 'hidden',
         },
@@ -76,8 +77,8 @@ export default () => {
   Graph.registerNode(
     'ghost-node',
     {
-      width: 200,
-      height: 54,
+      width: NODE_DIMENSIONS.STANDARD_WIDTH,
+      height: NODE_DIMENSIONS.STANDARD_HEIGHT,
       markup: [
         {
           tagName: 'defs',
@@ -148,7 +149,7 @@ export default () => {
           fontWeight: '600',
           textAnchor: 'middle',
           textVerticalAnchor: 'middle',
-          opacity: 0.8,
+          opacity: OPACITY.GHOST_NODE,
         },
       },
     },
