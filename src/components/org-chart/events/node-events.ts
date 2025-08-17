@@ -1,7 +1,7 @@
 import type { Graph, Node } from '@antv/x6'
-import { createEdge } from '../edge-hooks'
-import { reLayout } from '../graph-hooks'
-import { createNode } from '../node-hooks'
+import { createEdge } from '../hooks/edge-hooks'
+import { reLayout } from '../hooks/graph-hooks'
+import { createNode } from '../hooks/node-hooks'
 import { TIMING } from '../constants'
 import type { EventHandler, SharedEventState } from './shared-state'
 
@@ -21,7 +21,7 @@ export class NodeEventHandler implements EventHandler {
     this.graph.on('node:add', this.handleNodeAdd.bind(this))
     this.graph.on('node:delete', this.handleNodeDelete.bind(this))
     this.graph.on('node:click', this.handleNodeClick.bind(this))
-    
+
     // 画布点击事件
     this.graph.on('blank:click', this.handleBlankClick.bind(this))
   }
@@ -57,7 +57,7 @@ export class NodeEventHandler implements EventHandler {
    */
   private handleNodeClick({ node }: { node: Node }): void {
     if (this.state.isEditing || this.state.isDragging) return
-    
+
     if (this.state.clickTimer) {
       clearTimeout(this.state.clickTimer)
       this.state.clickTimer = null

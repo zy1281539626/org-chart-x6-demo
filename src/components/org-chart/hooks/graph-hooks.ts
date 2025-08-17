@@ -1,6 +1,6 @@
 import type { Graph, Node } from '@antv/x6'
 import dagre from 'dagre'
-import { NODE_DIMENSIONS, LAYOUT_SPACING, ZOOM } from './constants'
+import { NODE_DIMENSIONS, LAYOUT_SPACING, ZOOM } from '../constants'
 
 // 自动布局
 export function layout(graph: Graph, dir = 'TB') {
@@ -8,7 +8,11 @@ export function layout(graph: Graph, dir = 'TB') {
   const edges = graph.getEdges()
   const g = new dagre.graphlib.Graph()
   // nodesep-同一行节点间距 ranksep-行间距
-  g.setGraph({ rankdir: dir, nodesep: LAYOUT_SPACING.NODE_SEPARATION, ranksep: LAYOUT_SPACING.RANK_SEPARATION })
+  g.setGraph({
+    rankdir: dir,
+    nodesep: LAYOUT_SPACING.NODE_SEPARATION,
+    ranksep: LAYOUT_SPACING.RANK_SEPARATION,
+  })
   g.setDefaultEdgeLabel(() => ({}))
 
   const width = NODE_DIMENSIONS.STANDARD_WIDTH
@@ -128,10 +132,7 @@ export function checkNodeIntersections(
       const overlapLeft = Math.max(targetBBox.x, nodeBBox.x)
       const overlapRight = Math.min(targetBBox.x + targetBBox.width, nodeBBox.x + nodeBBox.width)
       const overlapTop = Math.max(targetBBox.y, nodeBBox.y)
-      const overlapBottom = Math.min(
-        targetBBox.y + targetBBox.height,
-        nodeBBox.y + nodeBBox.height,
-      )
+      const overlapBottom = Math.min(targetBBox.y + targetBBox.height, nodeBBox.y + nodeBBox.height)
 
       // 计算重叠面积
       const overlapX = overlapRight - overlapLeft
@@ -160,7 +161,10 @@ export function checkNodeIntersections(
 /**
  * 计算象限
  */
-export function calculateQuadrant(overlapCenter: { x: number; y: number }, nodeCenter: { x: number; y: number }): string {
+export function calculateQuadrant(
+  overlapCenter: { x: number; y: number },
+  nodeCenter: { x: number; y: number },
+): string {
   const deltaX = overlapCenter.x - nodeCenter.x
   const deltaY = overlapCenter.y - nodeCenter.y
 

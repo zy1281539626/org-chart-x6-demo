@@ -1,7 +1,7 @@
 import type { Graph, Node } from '@antv/x6'
 import { debounce } from '../utils'
 import { LAYOUT_SPACING, OPACITY, TIMING } from '../constants'
-import { layout, checkNodeIntersections } from '../graph-hooks'
+import { layout, checkNodeIntersections } from '../hooks/graph-hooks'
 import {
   createGhostNode,
   removePreviewNode,
@@ -9,8 +9,8 @@ import {
   checkChildPosition,
   createSiblingPreview,
   createChildPreview,
-} from '../node-hooks'
-import { OrgStructureUpdater, type DragContext } from '../org-structure-updater'
+} from '../hooks/node-hooks'
+import { OrgStructureUpdater, type DragContext } from '../hooks/org-structure-updater'
 import type { EventHandler, SharedEventState, NodeIntersection } from './shared-state'
 
 /**

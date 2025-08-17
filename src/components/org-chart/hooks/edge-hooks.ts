@@ -1,5 +1,5 @@
 import type { Cell, Graph, Node, Edge } from '@antv/x6'
-import { Z_INDEX, OPACITY } from './constants'
+import { Z_INDEX, OPACITY } from '../constants'
 
 /**
  * 创建边线
@@ -58,7 +58,12 @@ export function calculateOrthVertices(source: Node, target: Node): { x: number; 
 /**
  * 创建预览连线
  */
-export function createPreviewEdge(graph: Graph, source: Node, target: Node, vertices?: { x: number; y: number }[]): Edge {
+export function createPreviewEdge(
+  graph: Graph,
+  source: Node,
+  target: Node,
+  vertices?: { x: number; y: number }[],
+): Edge {
   return graph.addEdge({
     shape: 'org-edge',
     source: source.id,

@@ -1,5 +1,5 @@
 import type { Graph, Node } from '@antv/x6'
-import { reLayout } from '../graph-hooks'
+import { reLayout } from '../hooks/graph-hooks'
 import type { EventHandler, SharedEventState } from './shared-state'
 
 /**

@@ -1,7 +1,7 @@
 import { Dom, Edge, type Graph, type Node, type Rectangle } from '@antv/x6'
-import addIcon from './icons.png'
+import addIcon from '../icon/icons.png'
 import { calculateOrthVertices, createPreviewEdge } from './edge-hooks'
-import { NODE_DIMENSIONS, Z_INDEX, OPACITY } from './constants'
+import { NODE_DIMENSIONS, Z_INDEX, OPACITY } from '../constants'
 
 export function createNode(graph: Graph, name: string, type: number = 2) {
   return graph.createNode({
@@ -10,7 +10,10 @@ export function createNode(graph: Graph, name: string, type: number = 2) {
       '.addIcon': { xlinkHref: addIcon },
       '.card': { class: `card type-${type}` },
       '.name': {
-        text: Dom.breakText(name, { width: NODE_DIMENSIONS.TEXT_WIDTH, height: NODE_DIMENSIONS.TEXT_HEIGHT }),
+        text: Dom.breakText(name, {
+          width: NODE_DIMENSIONS.TEXT_WIDTH,
+          height: NODE_DIMENSIONS.TEXT_HEIGHT,
+        }),
       },
     },
   })

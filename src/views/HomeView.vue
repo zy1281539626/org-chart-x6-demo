@@ -2,13 +2,13 @@
 import { Graph } from '@antv/x6'
 
 import { onMounted } from 'vue'
-import initNodeStyle from './style'
-import registerNode from './register-node'
+import initNodeStyle from '../components/org-chart/style'
+import registerNode from '../components/org-chart/hooks/register-node'
 
-import { createEdge } from './edge-hooks'
-import { reLayout } from './graph-hooks'
-import { createNode } from './node-hooks'
-import { initEventListener } from './events'
+import { createEdge } from '../components/org-chart/hooks/edge-hooks'
+import { reLayout } from '../components/org-chart/hooks/graph-hooks'
+import { createNode } from '../components/org-chart/hooks/node-hooks'
+import { initEventListener } from '../components/org-chart/events'
 
 // 初始化样式
 initNodeStyle()

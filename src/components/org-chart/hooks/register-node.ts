@@ -1,5 +1,5 @@
 import { Graph } from '@antv/x6'
-import { NODE_DIMENSIONS, ICON, OPACITY } from './constants'
+import { NODE_DIMENSIONS, ICON, OPACITY } from '../constants'
 
 export default () => {
   // 自定义节点
