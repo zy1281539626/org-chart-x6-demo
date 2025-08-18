@@ -1,9 +1,17 @@
-import { Dom, Node, type Edge } from '@antv/x6'
+import { Dom, Node, Rectangle, type Edge } from '@antv/x6'
 import { childrenOrder, edges, graph, nodes } from '../state'
 import addIcon from '../icons/add.png'
-import { NODE_DIMENSIONS } from '../constants'
-import { createEdge, removeNodeEdgesByIds } from '../edge/hooks'
+import { NODE_DIMENSIONS, OPACITY, Z_INDEX, LAYOUT_SPACING } from '../constants'
+import {
+  calculateOrthVertices,
+  createEdge,
+  createPreviewEdge,
+  removeNodeEdgesByIds,
+} from '../edge/hooks'
 import { layout } from '../graph/hooks'
+
+// 预览节点的单例实例
+let previewNodeInstance: Node | null = null
 
 /**
  * 创建Node
@@ -29,6 +37,244 @@ export function createNode(name: string, type: number = 2) {
 }
 
 /**
+ * 创建幽灵节点
+ * @param originalNode
+ * @returns
+ */
+export function createGhostNode(originalNode: Node): Node {
+  const currentText = (originalNode.getAttrByPath('.name/text') as string) || originalNode.id
+  const originalPos = originalNode.getPosition()
+
+  return graph.value!.addNode({
+    shape: 'ghost-node',
+    x: originalPos.x,
+    y: originalPos.y,
+    zIndex: Z_INDEX.GHOST_NODE,
+    attrs: {
+      '.name': {
+        text: currentText,
+      },
+    },
+  })
+}
+
+export function createPreviewNode(parentNode: Node, index: number) {
+  // 获取父节点的所有子元素
+  const childrenIds = getChildrenIds(parentNode.id)
+  const parentBBox = parentNode.getBBox()
+
+  let previewX: number, previewY: number
+
+  if (childrenIds.length === 0) {
+    // 如果没有子节点，在父节点下方创建预览节点
+    previewX = parentBBox.x + parentBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
+    previewY = parentBBox.y + parentBBox.height + LAYOUT_SPACING.DRAG_SPACING
+  } else {
+    // 查询第index位置的子节点的位置
+    if (index >= childrenIds.length) {
+      // 如果index超出范围，在最后一个子节点后面插入
+      const lastChildId = childrenIds[childrenIds.length - 1]
+      const lastChildNode = nodes.value.find((n) => n.id === lastChildId)
+      if (lastChildNode) {
+        const lastChildPos = lastChildNode.getPosition()
+        // 新位置 y坐标与其他子节点一样，x坐标在index节点位置加上50
+        previewX = lastChildPos.x + NODE_DIMENSIONS.STANDARD_WIDTH + 50
+        previewY = lastChildPos.y
+      } else {
+        previewX = parentBBox.x + parentBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
+        previewY = parentBBox.y + parentBBox.height + LAYOUT_SPACING.DRAG_SPACING
+      }
+    } else {
+      // 在指定index位置的子节点处插入
+      const targetChildId = childrenIds[index]
+      const targetChildNode = nodes.value.find((n) => n.id === targetChildId)
+      if (targetChildNode) {
+        const targetChildPos = targetChildNode.getPosition()
+        // 新位置 y坐标与其他子节点一样，x坐标在index节点位置加上50
+        previewX = targetChildPos.x + 50
+        previewY = targetChildPos.y
+      } else {
+        previewX = parentBBox.x + parentBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
+        previewY = parentBBox.y + parentBBox.height + LAYOUT_SPACING.DRAG_SPACING
+      }
+    }
+  }
+
+  // 添加preview节点到父节点
+  const previewNode = updatePreviewNodePosition(previewX, previewY)
+
+  // 创建预览边连接父节点和预览节点
+  let previewEdge = null
+  if (previewNode) {
+    const vertices = calculateOrthVertices(parentNode, previewNode)
+    previewEdge = createPreviewEdge(parentNode, previewNode, vertices)
+  }
+
+  return { previewNode, previewEdge }
+}
+
+/**
+ * 创建子节点预览
+ */
+export function createChildPreview(
+  targetNode: Node,
+  targetNodeBBox: Rectangle,
+  spacing: number,
+  index: number,
+): { previewNode: Node | null; previewEdge: Edge | null } {
+  let previewNode: Node | null = null
+  let previewEdge: Edge | null = null
+
+  const outgoingEdges = graph.value!.getOutgoingEdges(targetNode)
+  const hasChildren = outgoingEdges ? outgoingEdges.length > 0 : false
+
+  let previewX: number, previewY: number
+
+  if (hasChildren) {
+    // 根据index确定插入位置
+    const children = outgoingEdges?.map((edge) => edge.getTargetNode()).filter(Boolean) || []
+
+    if (index >= children.length) {
+      // 插入到末尾
+      const lastChild = children[children.length - 1]
+      const childY = lastChild
+        ? lastChild.getPosition().y + targetNodeBBox.width + spacing
+        : targetNodeBBox.y + targetNodeBBox.height + spacing
+
+      previewX = targetNodeBBox.x + targetNodeBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
+      previewY = childY
+    } else {
+      // 插入到指定位置
+      const targetChild = children[index]
+      const childY = targetChild
+        ? targetChild.getPosition().y
+        : targetNodeBBox.y + targetNodeBBox.height + spacing
+
+      previewX = targetNodeBBox.x + targetNodeBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
+      previewY = childY
+    }
+  } else {
+    previewX = targetNodeBBox.x + targetNodeBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
+    previewY = targetNodeBBox.y + targetNodeBBox.height + spacing
+  }
+
+  previewNode = updatePreviewNodePosition(previewX, previewY)
+  if (previewNode) {
+    const vertices = calculateOrthVertices(targetNode, previewNode)
+    previewEdge = createPreviewEdge(targetNode, previewNode, vertices)
+  }
+
+  return { previewNode, previewEdge }
+}
+
+/**
+ * 更新预览节点位置
+ */
+export function updatePreviewNodePosition(x: number, y: number): Node {
+  const node = getOrCreatePreviewNode()
+  node.setPosition(x, y)
+  return node
+}
+
+/**
+ * 获取或创建预览节点实例
+ */
+export function getOrCreatePreviewNode(): Node {
+  if (!previewNodeInstance || !graph.value!.hasCell(previewNodeInstance)) {
+    previewNodeInstance = graph.value!.addNode({
+      shape: 'rect',
+      x: 0,
+      y: 0,
+      zIndex: Z_INDEX.PREVIEW_NODE,
+      width: NODE_DIMENSIONS.PREVIEW_WIDTH,
+      height: NODE_DIMENSIONS.PREVIEW_HEIGHT,
+      attrs: {
+        body: {
+          fill: '#ff9500',
+          stroke: '#ff6600',
+          strokeWidth: 2,
+          opacity: OPACITY.PREVIEW,
+        },
+      },
+      data: {
+        type: 'preview-node',
+      },
+    })
+  }
+  return previewNodeInstance
+}
+
+/**
+ * 检测节点相交的方法 - 返回相交面积最大的节点
+ */
+export function checkNodeIntersections(
+  targetNode: Node,
+  excludeNode?: Node,
+): {
+  node: Node
+  position: { x: number; y: number }
+  overlap: number
+  overlapCenter: { x: number; y: number }
+} | null {
+  const targetBBox = targetNode.getBBox()
+  let maxIntersection: {
+    node: Node
+    position: { x: number; y: number }
+    overlap: number
+    overlapCenter: { x: number; y: number }
+  } | null = null
+
+  // 获取所有其他节点
+  const allNodes = graph.value!.getNodes().filter(
+    (node) =>
+      node.id !== targetNode.id &&
+      (!excludeNode || node.id !== excludeNode.id) &&
+      !node.id.startsWith('ghost-'), // 排除幽灵节点
+  )
+
+  allNodes.forEach((node) => {
+    const nodeBBox = node.getBBox()
+
+    // 检测两个矩形是否相交
+    const isIntersecting = !(
+      targetBBox.x + targetBBox.width < nodeBBox.x || // target在node左边
+      nodeBBox.x + nodeBBox.width < targetBBox.x || // target在node右边
+      targetBBox.y + targetBBox.height < nodeBBox.y || // target在node上边
+      nodeBBox.y + nodeBBox.height < targetBBox.y // target在node下边
+    )
+
+    if (isIntersecting) {
+      // 计算重叠区域的边界
+      const overlapLeft = Math.max(targetBBox.x, nodeBBox.x)
+      const overlapRight = Math.min(targetBBox.x + targetBBox.width, nodeBBox.x + nodeBBox.width)
+      const overlapTop = Math.max(targetBBox.y, nodeBBox.y)
+      const overlapBottom = Math.min(targetBBox.y + targetBBox.height, nodeBBox.y + nodeBBox.height)
+
+      // 计算重叠面积
+      const overlapX = overlapRight - overlapLeft
+      const overlapY = overlapBottom - overlapTop
+      const overlapArea = overlapX * overlapY
+
+      // 计算重叠区域的中心点
+      const overlapCenterX = overlapLeft + overlapX / 2
+      const overlapCenterY = overlapTop + overlapY / 2
+
+      // 如果是第一个相交节点，或者重叠面积更大，则更新最大相交节点
+      if (!maxIntersection || overlapArea > maxIntersection.overlap) {
+        maxIntersection = {
+          node,
+          position: node.getPosition(),
+          overlap: overlapArea,
+          overlapCenter: { x: overlapCenterX, y: overlapCenterY },
+        }
+      }
+    }
+  })
+
+  return maxIntersection
+}
+
+/**
  * 根据name获取node
  * @param name
  * @returns
@@ -38,7 +284,6 @@ export function findNodeByName(name: string): Node | null {
     (nodes.value.find((node) => {
       let text = ''
       const textAttr = node.attr('.name/text')
-      console.log(textAttr)
       if (Array.isArray(textAttr)) {
         text = textAttr.join(' ')
       } else {

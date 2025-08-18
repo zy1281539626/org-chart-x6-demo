@@ -4,10 +4,11 @@ import registerEdge from './edge/register'
 import { Graph, Node, type Edge } from '@antv/x6'
 import { onMounted, ref } from 'vue'
 import { edges, graph, nodes } from './state'
-import { createNode, findNodeByName, moveNode } from './node/hooks'
+import { createNode, createPreviewNode, findNodeByName, moveNode } from './node/hooks'
 import { createEdge } from './edge/hooks'
 import { layout } from './graph/hooks'
 import initNodeStyle from './styles'
+import { initEventListener } from './events'
 
 // 1.注册节点和边线
 registerNode()
@@ -59,10 +60,14 @@ onMounted(() => {
     createEdge(nodes.value[2] as Node, nodes.value[4] as Node),
   ]
 
+  // 5.重置画布内容并布局
   graph.value?.resetCells([...(nodes.value as Node[]), ...(edges.value as Edge[])])
   layout()
   graph.value.zoomTo(0.8)
   graph.value.centerContent()
+
+  // 6.初始化事件监听
+  initEventListener()
 })
 
 const parent = ref()
@@ -75,6 +80,13 @@ const onTest = () => {
     moveNode(parentNode, targetNode, index.value)
   }
 }
+
+const onPreview = () => {
+  const parentNode = findNodeByName(parent.value)
+  if (parentNode) {
+    createPreviewNode(parentNode, index.value)
+  }
+}
 </script>
 
 <template>
@@ -82,6 +94,7 @@ const onTest = () => {
     父节点：<input type="text" v-model="parent" /> 目标节点：<input type="text" v-model="target" />
     位置：<input type="text" v-model="index" />
     <button @click="onTest" class="action-button">转移Test</button>
+    <button @click="onPreview" class="action-button">显示Preview</button>
   </div>
   <div ref="containerRef" id="chart-container"></div>
 </template>
