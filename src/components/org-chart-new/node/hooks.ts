@@ -1,4 +1,4 @@
-import { Dom, Node, Rectangle, type Edge } from '@antv/x6'
+import { Dom, Node, type Edge } from '@antv/x6'
 import { childrenOrder, edges, graph, nodes } from '../state'
 import addIcon from '../icons/add.png'
 import { NODE_DIMENSIONS, OPACITY, Z_INDEX, LAYOUT_SPACING } from '../constants'
@@ -58,6 +58,12 @@ export function createGhostNode(originalNode: Node): Node {
   })
 }
 
+/**
+ * 创建预览节点
+ * @param parentNode 父节点
+ * @param index 位置
+ * @returns
+ */
 export function createPreviewNode(parentNode: Node, index: number) {
   // 获取父节点的所有子元素
   const childrenIds = getChildrenIds(parentNode.id)
@@ -90,8 +96,8 @@ export function createPreviewNode(parentNode: Node, index: number) {
       const targetChildNode = nodes.value.find((n) => n.id === targetChildId)
       if (targetChildNode) {
         const targetChildPos = targetChildNode.getPosition()
-        // 新位置 y坐标与其他子节点一样，x坐标在index节点位置加上50
-        previewX = targetChildPos.x + 50
+        // 新位置 y坐标与其他子节点一样，x坐标向左偏移一点防止与第index节点重合
+        previewX = targetChildPos.x - 30
         previewY = targetChildPos.y
       } else {
         previewX = parentBBox.x + parentBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
@@ -114,57 +120,13 @@ export function createPreviewNode(parentNode: Node, index: number) {
 }
 
 /**
- * 创建子节点预览
+ * 移除预览节点
  */
-export function createChildPreview(
-  targetNode: Node,
-  targetNodeBBox: Rectangle,
-  spacing: number,
-  index: number,
-): { previewNode: Node | null; previewEdge: Edge | null } {
-  let previewNode: Node | null = null
-  let previewEdge: Edge | null = null
-
-  const outgoingEdges = graph.value!.getOutgoingEdges(targetNode)
-  const hasChildren = outgoingEdges ? outgoingEdges.length > 0 : false
-
-  let previewX: number, previewY: number
-
-  if (hasChildren) {
-    // 根据index确定插入位置
-    const children = outgoingEdges?.map((edge) => edge.getTargetNode()).filter(Boolean) || []
-
-    if (index >= children.length) {
-      // 插入到末尾
-      const lastChild = children[children.length - 1]
-      const childY = lastChild
-        ? lastChild.getPosition().y + targetNodeBBox.width + spacing
-        : targetNodeBBox.y + targetNodeBBox.height + spacing
-
-      previewX = targetNodeBBox.x + targetNodeBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
-      previewY = childY
-    } else {
-      // 插入到指定位置
-      const targetChild = children[index]
-      const childY = targetChild
-        ? targetChild.getPosition().y
-        : targetNodeBBox.y + targetNodeBBox.height + spacing
-
-      previewX = targetNodeBBox.x + targetNodeBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
-      previewY = childY
-    }
-  } else {
-    previewX = targetNodeBBox.x + targetNodeBBox.width / 2 - NODE_DIMENSIONS.PREVIEW_HALF_WIDTH
-    previewY = targetNodeBBox.y + targetNodeBBox.height + spacing
+export function removePreviewNode(): void {
+  if (previewNodeInstance && graph.value?.hasCell(previewNodeInstance)) {
+    graph.value?.removeNode(previewNodeInstance)
+    previewNodeInstance = null
   }
-
-  previewNode = updatePreviewNodePosition(previewX, previewY)
-  if (previewNode) {
-    const vertices = calculateOrthVertices(targetNode, previewNode)
-    previewEdge = createPreviewEdge(targetNode, previewNode, vertices)
-  }
-
-  return { previewNode, previewEdge }
 }
 
 /**
@@ -383,10 +345,10 @@ export function getChildrenIds(nodeId: string): string[] {
   return children
 }
 
+// 移动节点
 export function moveNode(parentNode: Node, targetNode: Node, position: number) {
   moveNodeToParentById(targetNode, parentNode, position)
-
-  graph.value?.centerContent()
+  // graph.value?.centerContent()
 }
 
 export function moveNodeToParentById(
@@ -558,4 +520,53 @@ function rebuildGraphWithCurrentStructure() {
   // 重置图表
   graph.value?.resetCells([...(nodes.value as Node[]), ...newEdges])
   layout()
+}
+
+// 获取节点所在父级
+export function getNodeParent(node: Node) {
+  const incomingEdges = graph.value?.getIncomingEdges(node)
+  if (incomingEdges && incomingEdges.length > 0) {
+    const parentNode = incomingEdges[0].getSourceNode()
+    const parentChildren = childrenOrder.value[parentNode!.id] || []
+    return {
+      index: parentChildren.indexOf(node.id),
+      parentNode,
+      parentChildrenCount: parentChildren.length,
+      parentChildrenNames: parentChildren.map((nodeId: string) => {
+        return graph.value?.getCellById(nodeId).getAttrByPath('.name/text')
+      }),
+    }
+  }
+  return null
+}
+
+// 获取当前节点信息
+export function getNodeCurrent(node: Node, dragNode: Node) {
+  const outgoingEdges = graph.value?.getOutgoingEdges(node)
+  if (outgoingEdges && outgoingEdges.length > 0) {
+    const parentNode = node
+    const parentChildren = childrenOrder.value[parentNode!.id] || []
+    return {
+      index: parentChildren.indexOf(dragNode.id),
+      parentNode,
+      parentChildrenCount: parentChildren.length,
+      parentChildrenNames: parentChildren.map((nodeId: string) => {
+        return graph.value?.getCellById(nodeId).getAttrByPath('.name/text')
+      }),
+    }
+  } else {
+    // 无子节点
+    return {
+      index: 0,
+      parentNode: node,
+      parentChildrenCount: 0,
+    }
+  }
+}
+
+// 检查是否是同一个父级
+export function isSameParentNode(node1: Node, node2: Node) {
+  const node1ParentNodeId = getNodeParent(node1)?.parentNode?.id
+  const node2ParentNodeId = getNodeParent(node2)?.parentNode?.id
+  return node1ParentNodeId === node2ParentNodeId
 }

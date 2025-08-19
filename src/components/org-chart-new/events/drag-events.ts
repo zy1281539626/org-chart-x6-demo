@@ -1,13 +1,17 @@
 import type { Graph, Node } from '@antv/x6'
 import { debounce } from '../utils'
-import { LAYOUT_SPACING, OPACITY, TIMING } from '../constants'
+import { OPACITY, TIMING } from '../constants'
 import { layout } from '../graph/hooks'
 import type { EventHandler, SharedEventState, NodeIntersection } from './shared-state'
 import {
   checkNodeIntersections,
-  createChildPreview,
   createGhostNode,
+  createPreviewNode,
+  getNodeCurrent,
+  getNodeParent,
+  isSameParentNode,
   moveNode,
+  removePreviewNode,
 } from '../node/hooks'
 
 /**
@@ -19,17 +23,10 @@ export class DragEventHandler implements EventHandler {
   private debouncedHandleMouseMove!: (e: MouseEvent) => void
   private editHandler?: { exitEditMode: (save: boolean) => void }
   private preMoveParams?: { parentNode: Node; targetNode: Node; index: number }
-  // private orgUpdater!: OrgStructureUpdater
-
-  // 拖拽上下文信息
-  // private currentDragContext: DragContext | null = null
 
   init(graph: Graph, state: SharedEventState): void {
     this.graph = graph
     this.state = state
-
-    // 创建组织结构更新器
-    // this.orgUpdater = new OrgStructureUpdater(graph)
 
     // 创建防抖的鼠标移动处理函数
     this.debouncedHandleMouseMove = debounce(this.handleMouseMove.bind(this), TIMING.DEBOUNCE_DELAY)
@@ -66,7 +63,7 @@ export class DragEventHandler implements EventHandler {
    * 清理预览节点和连线
    */
   private cleanupPreview(): void {
-    // removePreviewNode(this.graph)
+    removePreviewNode()
     if (this.state.previewEdge) {
       this.graph.removeEdge(this.state.previewEdge)
       this.state.previewEdge = null
@@ -98,8 +95,6 @@ export class DragEventHandler implements EventHandler {
       clearTimeout(this.state.clickTimer)
       this.state.clickTimer = null
     }
-
-    console.log('mousedown on node:', node.id)
   }
 
   /**
@@ -154,9 +149,9 @@ export class DragEventHandler implements EventHandler {
       if (maxIntersection) {
         this.handleIntersection(maxIntersection)
       } else {
-        // 没有相交节点时，清理所有预览元素和上下文
+        // 没有相交节点时，清理所有预览元素
         this.cleanupPreview()
-        // this.currentDragContext = null
+        this.preMoveParams = undefined
       }
     }
   }
@@ -165,9 +160,17 @@ export class DragEventHandler implements EventHandler {
    * 处理节点相交逻辑
    */
   private handleIntersection(maxIntersection: NodeIntersection): void {
-    // console.log(this.state.dragNode, maxIntersection.node)
     // 清理之前的预览元素
     this.cleanupPreview()
+
+    // 拖拽节点父级信息
+    const dragNodeInfo = getNodeParent(this.state.dragNode!)
+    if (!dragNodeInfo?.parentNode) {
+      return
+    }
+
+    // 是否是相同父级
+    let isSameParent = false
 
     // 计算节点的中心点坐标
     const nodeBBox = maxIntersection.node.getBBox()
@@ -178,77 +181,148 @@ export class DragEventHandler implements EventHandler {
     const deltaX = maxIntersection.overlapCenter.x - nodeCenterX
     const deltaY = maxIntersection.overlapCenter.y - nodeCenterY
 
-    // 根据象限判断插入位置并创建预览
-    const targetNodeBBox = maxIntersection.node.getBBox()
-    const spacing = LAYOUT_SPACING.DRAG_SPACING
-
     // 获取目标节点的子节点数量，用于计算最后一个位置的index
     const outgoingEdges = this.graph.getOutgoingEdges(maxIntersection.node)
     const childrenCount = outgoingEdges ? outgoingEdges.length : 0
 
     let index = 0
     if (deltaX > 0 && deltaY < 0) {
-      // 第一象限 (右上) - 移动到父级右边，index为当前节点在父级中的位置-1
-      const incomingEdges = this.graph.getIncomingEdges(maxIntersection.node)
-      if (incomingEdges && incomingEdges.length > 0) {
-        const parentNode = incomingEdges[0].getSourceNode()
-        const parentOutgoingEdges = this.graph.getOutgoingEdges(parentNode!)
-        if (parentOutgoingEdges) {
-          const currentNodeIndex = parentOutgoingEdges.findIndex(
-            (edge) => edge.getTargetNode()?.id === maxIntersection.node.id,
-          )
-          index = currentNodeIndex >= 0 ? Math.max(0, currentNodeIndex + 1) : 0
-        } else {
-          index = 0
-        }
-        console.log('第一象限 index:', index)
-        this.preMoveParams = { parentNode: parentNode!, targetNode: this.state.dragNode!, index }
+      // 第一象限 (右上)
+      // 一、二象限相交节点父级信息
+      const parentNodeInfo = getNodeParent(maxIntersection.node)
+      if (!parentNodeInfo?.parentNode) {
+        return
       }
+      console.log('=======================================')
+      console.log('相交节点index:', parentNodeInfo.index)
+      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
+      console.log(
+        '子节点个数:',
+        parentNodeInfo.parentChildrenCount,
+        parentNodeInfo.parentChildrenNames,
+      )
 
-      // result = createChildPreview(maxIntersection.node, targetNodeBBox, spacing, index)
+      isSameParent = isSameParentNode(this.state.dragNode!, maxIntersection.node)
+
+      if (parentNodeInfo?.parentChildrenCount === 0) {
+        index = 0
+      } else {
+        if (isSameParent && parentNodeInfo?.index === dragNodeInfo?.index - 1) {
+          return
+        }
+        index = (parentNodeInfo?.index || 0) + 1
+      }
+      this.preMoveParams = {
+        parentNode: parentNodeInfo?.parentNode,
+        targetNode: this.state.dragNode!,
+        index,
+      }
+      const previewResult = createPreviewNode(parentNodeInfo?.parentNode, index)
+      this.state.previewEdge = previewResult.previewEdge
     } else if (deltaX < 0 && deltaY < 0) {
       // 第二象限 (左上) - 移动到父级左边，index为当前节点在父级的位置
-      const incomingEdges = this.graph.getIncomingEdges(maxIntersection.node)
-      if (incomingEdges && incomingEdges.length > 0) {
-        const parentNode = incomingEdges[0].getSourceNode()
-        const parentOutgoingEdges = this.graph.getOutgoingEdges(parentNode!)
-        if (parentOutgoingEdges) {
-          const currentNodeIndex = parentOutgoingEdges.findIndex(
-            (edge) => edge.getTargetNode()?.id === maxIntersection.node.id,
-          )
-          index = currentNodeIndex >= 0 ? currentNodeIndex : 0
-        } else {
-          index = 0
+      // 一、二象限相交节点父级信息
+      const parentNodeInfo = getNodeParent(maxIntersection.node)
+      if (!parentNodeInfo?.parentNode) {
+        return
+      }
+      console.log('=======================================')
+      console.log('相交节点index:', parentNodeInfo.index)
+      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
+      console.log(
+        '子节点个数:',
+        parentNodeInfo.parentChildrenCount,
+        parentNodeInfo.parentChildrenNames,
+      )
+
+      isSameParent = isSameParentNode(this.state.dragNode!, maxIntersection.node)
+
+      if (parentNodeInfo?.parentChildrenCount === 0) {
+        index = 0
+      } else {
+        if (isSameParent && parentNodeInfo?.index === dragNodeInfo?.index + 1) {
+          return
         }
-        console.log('第二象限 index:', index)
-        this.preMoveParams = { parentNode: parentNode!, targetNode: this.state.dragNode!, index }
+        index = parentNodeInfo.index > 0 ? parentNodeInfo.index : 0
       }
 
-      // result = createChildPreview(maxIntersection.node, targetNodeBBox, spacing, index)
+      console.log('第二象限 最终index:', index)
+      this.preMoveParams = {
+        parentNode: parentNodeInfo.parentNode,
+        targetNode: this.state.dragNode!,
+        index,
+      }
+      const previewResult = createPreviewNode(parentNodeInfo.parentNode, index)
+      this.state.previewEdge = previewResult.previewEdge
     } else if (deltaX < 0 && deltaY > 0) {
       // 第三象限 (左下) - 移动到子级左边，index为0
+      // 三、四象限相交节点父级信息
+      const parentNodeInfo = getNodeCurrent(maxIntersection.node, this.state.dragNode!)
+      if (!parentNodeInfo?.parentNode) {
+        return
+      }
+      console.log('=======================================')
+      console.log('相交节点index:', parentNodeInfo.index)
+      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
+      console.log(
+        '子节点个数:',
+        parentNodeInfo.parentChildrenCount,
+        parentNodeInfo.parentChildrenNames,
+      )
+
+      isSameParent = dragNodeInfo.parentNode.id === maxIntersection.node.id
+
       index = 0
-      console.log('第三象限 index:', index)
+
+      if (isSameParent && dragNodeInfo.index === 0) {
+        return
+      }
 
       this.preMoveParams = {
         parentNode: maxIntersection.node,
         targetNode: this.state.dragNode!,
         index,
       }
-      // result = createChildPreview(maxIntersection.node, targetNodeBBox, spacing, index)
+      console.log('第三象限 index:', index)
+      const previewResult = createPreviewNode(maxIntersection.node, index)
+      this.state.previewEdge = previewResult.previewEdge
     } else if (deltaX > 0 && deltaY > 0) {
       // 第四象限 (右下) - 移动到子级右边，index为当前节点的子节点个数-1
+      // 三、四象限相交节点父级信息
+      const parentNodeInfo = getNodeCurrent(maxIntersection.node, this.state.dragNode!)
+      if (!parentNodeInfo?.parentNode) {
+        return
+      }
+      console.log('=======================================')
+      console.log(
+        '相交节点index:',
+        parentNodeInfo.index,
+        maxIntersection.node.getAttrByPath('.name/text'),
+      )
+      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
+      console.log(
+        '子节点个数:',
+        parentNodeInfo.parentChildrenCount,
+        parentNodeInfo.parentChildrenNames,
+      )
+
+      isSameParent = dragNodeInfo.parentNode.id === maxIntersection.node.id
+
       index = childrenCount > 0 ? childrenCount : 0
+      console.log(isSameParent, parentNodeInfo.parentChildrenCount, dragNodeInfo.index + 1)
+      if (isSameParent && parentNodeInfo.parentChildrenCount === dragNodeInfo.index + 1) {
+        return
+      }
+
       console.log('第四象限 index:', index)
       this.preMoveParams = {
         parentNode: maxIntersection.node,
         targetNode: this.state.dragNode!,
         index,
       }
-      // result = createChildPreview(maxIntersection.node, targetNodeBBox, spacing, index)
+      const previewResult = createPreviewNode(maxIntersection.node, index)
+      this.state.previewEdge = previewResult.previewEdge
     }
-
-    // this.state.previewEdge = result.previewEdge
   }
 
   /**

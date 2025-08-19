@@ -4,6 +4,48 @@ import { getParentId } from '../node/hooks'
 import type { Node } from '@antv/x6'
 import { LAYOUT_SPACING, NODE_DIMENSIONS } from '../constants'
 
+/**
+ * 初始化childrenOrder - 根据当前图中的边连接关系初始化子节点顺序
+ */
+export function initializeChildrenOrder() {
+  console.log('初始化childrenOrder...')
+  
+  // 清空现有的childrenOrder
+  childrenOrder.value = {}
+  
+  // 获取所有边
+  const graphEdges = graph.value?.getEdges() || []
+  
+  // 按父节点分组子节点
+  const parentChildrenMap: Record<string, string[]> = {}
+  
+  graphEdges.forEach((edge) => {
+    const sourceId = edge.getSourceCellId()
+    const targetId = edge.getTargetCellId()
+    
+    if (sourceId && targetId) {
+      if (!parentChildrenMap[sourceId]) {
+        parentChildrenMap[sourceId] = []
+      }
+      parentChildrenMap[sourceId].push(targetId)
+    }
+  })
+  
+  // 对每个父节点的子节点按照nodes.value中的原始顺序排序
+  Object.entries(parentChildrenMap).forEach(([parentId, children]) => {
+    const sortedChildren = children.sort((a, b) => {
+      const indexA = nodes.value.findIndex((node) => node.id === a)
+      const indexB = nodes.value.findIndex((node) => node.id === b)
+      return indexA - indexB
+    })
+    
+    childrenOrder.value[parentId] = sortedChildren
+    console.log(`父节点 ${parentId} 的子节点顺序:`, sortedChildren)
+  })
+  
+  console.log('childrenOrder初始化完成:', childrenOrder.value)
+}
+
 // 高级布局函数 - 精确控制子节点顺序并居中对齐
 export function layout() {
   const graphEdges = graph.value?.getEdges()

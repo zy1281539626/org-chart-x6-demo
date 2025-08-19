@@ -3,6 +3,7 @@ import { createEdge } from '../edge/hooks'
 import { layout } from '../graph/hooks'
 import { createNode } from '../node/hooks'
 import { TIMING } from '../constants'
+import { nodes, edges, childrenOrder } from '../state'
 import type { EventHandler, SharedEventState } from './shared-state'
 
 /**
@@ -39,8 +40,23 @@ export class NodeEventHandler implements EventHandler {
   private handleNodeAdd({ e, node }: { e: Event; node: Node }): void {
     e.stopPropagation()
     const member = createNode('子公司')
-    this.graph.addCell([member, createEdge(node, member)])
-    layout()
+    if (member) {
+      const edge = createEdge(node, member)
+      this.graph.addCell([member, edge])
+      
+      // 同步更新状态数组
+      nodes.value.push(member)
+      edges.value.push(edge)
+      
+      // 更新childrenOrder - 将新节点添加到父节点的子节点列表末尾
+      const parentId = node.id
+      if (!childrenOrder.value[parentId]) {
+        childrenOrder.value[parentId] = []
+      }
+      childrenOrder.value[parentId].push(member.id)
+      
+      layout()
+    }
   }
 
   /**
@@ -48,6 +64,38 @@ export class NodeEventHandler implements EventHandler {
    */
   private handleNodeDelete({ e, node }: { e: Event; node: Node }): void {
     e.stopPropagation()
+    
+    // 从状态数组中移除节点
+    const nodeIndex = nodes.value.findIndex(n => n.id === node.id)
+    if (nodeIndex > -1) {
+      nodes.value.splice(nodeIndex, 1)
+    }
+    
+    // 从父节点的childrenOrder中移除
+    const parentEdges = this.graph.getIncomingEdges(node)
+    if (parentEdges && parentEdges.length > 0) {
+      const parentId = parentEdges[0].getSourceCellId()
+      if (childrenOrder.value[parentId]) {
+        const childIndex = childrenOrder.value[parentId].indexOf(node.id)
+        if (childIndex > -1) {
+          childrenOrder.value[parentId].splice(childIndex, 1)
+        }
+      }
+    }
+    
+    // 清理该节点的childrenOrder记录
+    delete childrenOrder.value[node.id]
+    
+    // 移除相关的边
+    const relatedEdges = this.graph.getConnectedEdges(node)
+    relatedEdges.forEach(edge => {
+      const edgeIndex = edges.value.findIndex(e => e.id === edge.id)
+      if (edgeIndex > -1) {
+        edges.value.splice(edgeIndex, 1)
+      }
+    })
+    
+    // 从图中移除节点（这会自动移除相关边）
     this.graph.removeCell(node)
     layout()
   }

@@ -1,12 +1,13 @@
 <script lang="ts" setup>
+import { Graph, Node, type Edge } from '@antv/x6'
+import { History } from '@antv/x6-plugin-history'
 import registerNode from './node/register'
 import registerEdge from './edge/register'
-import { Graph, Node, type Edge } from '@antv/x6'
 import { onMounted, ref } from 'vue'
 import { edges, graph, nodes } from './state'
 import { createNode, createPreviewNode, findNodeByName, moveNode } from './node/hooks'
 import { createEdge } from './edge/hooks'
-import { layout } from './graph/hooks'
+import { layout, initializeChildrenOrder } from './graph/hooks'
 import initNodeStyle from './styles'
 import { initEventListener } from './events'
 
@@ -45,6 +46,12 @@ onMounted(() => {
     },
   })
 
+  graph.value.use(
+    new History({
+      enabled: true,
+    }),
+  )
+
   // 4.创建节点，边线
   nodes.value = [
     createNode('A', 1),
@@ -62,11 +69,15 @@ onMounted(() => {
 
   // 5.重置画布内容并布局
   graph.value?.resetCells([...(nodes.value as Node[]), ...(edges.value as Edge[])])
+  
+  // 6.初始化childrenOrder（必须在layout之前）
+  initializeChildrenOrder()
+  
   layout()
   graph.value.zoomTo(0.8)
   graph.value.centerContent()
 
-  // 6.初始化事件监听
+  // 7.初始化事件监听
   initEventListener()
 })
 
@@ -87,6 +98,10 @@ const onPreview = () => {
     createPreviewNode(parentNode, index.value)
   }
 }
+
+const onPrint = () => {
+  console.log(graph.value?.toJSON())
+}
 </script>
 
 <template>
@@ -95,6 +110,7 @@ const onPreview = () => {
     位置：<input type="text" v-model="index" />
     <button @click="onTest" class="action-button">转移Test</button>
     <button @click="onPreview" class="action-button">显示Preview</button>
+    <button @click="onPrint" class="action-button">打印Json</button>
   </div>
   <div ref="containerRef" id="chart-container"></div>
 </template>
