@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { Graph, Node, type Edge } from '@antv/x6'
-import { History } from '@antv/x6-plugin-history'
 import registerNode from './node/register'
 import registerEdge from './edge/register'
 import { onMounted, ref } from 'vue'
@@ -46,12 +45,6 @@ onMounted(() => {
     },
   })
 
-  graph.value.use(
-    new History({
-      enabled: true,
-    }),
-  )
-
   // 4.创建节点，边线
   nodes.value = [
     createNode('A', 1),
@@ -69,10 +62,10 @@ onMounted(() => {
 
   // 5.重置画布内容并布局
   graph.value?.resetCells([...(nodes.value as Node[]), ...(edges.value as Edge[])])
-  
+
   // 6.初始化childrenOrder（必须在layout之前）
   initializeChildrenOrder()
-  
+
   layout()
   graph.value.zoomTo(0.8)
   graph.value.centerContent()

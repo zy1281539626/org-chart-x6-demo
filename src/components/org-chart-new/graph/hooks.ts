@@ -8,21 +8,19 @@ import { LAYOUT_SPACING, NODE_DIMENSIONS } from '../constants'
  * 初始化childrenOrder - 根据当前图中的边连接关系初始化子节点顺序
  */
 export function initializeChildrenOrder() {
-  console.log('初始化childrenOrder...')
-  
   // 清空现有的childrenOrder
   childrenOrder.value = {}
-  
+
   // 获取所有边
   const graphEdges = graph.value?.getEdges() || []
-  
+
   // 按父节点分组子节点
   const parentChildrenMap: Record<string, string[]> = {}
-  
+
   graphEdges.forEach((edge) => {
     const sourceId = edge.getSourceCellId()
     const targetId = edge.getTargetCellId()
-    
+
     if (sourceId && targetId) {
       if (!parentChildrenMap[sourceId]) {
         parentChildrenMap[sourceId] = []
@@ -30,7 +28,7 @@ export function initializeChildrenOrder() {
       parentChildrenMap[sourceId].push(targetId)
     }
   })
-  
+
   // 对每个父节点的子节点按照nodes.value中的原始顺序排序
   Object.entries(parentChildrenMap).forEach(([parentId, children]) => {
     const sortedChildren = children.sort((a, b) => {
@@ -38,12 +36,9 @@ export function initializeChildrenOrder() {
       const indexB = nodes.value.findIndex((node) => node.id === b)
       return indexA - indexB
     })
-    
+
     childrenOrder.value[parentId] = sortedChildren
-    console.log(`父节点 ${parentId} 的子节点顺序:`, sortedChildren)
   })
-  
-  console.log('childrenOrder初始化完成:', childrenOrder.value)
 }
 
 // 高级布局函数 - 精确控制子节点顺序并居中对齐
@@ -116,15 +111,20 @@ export function layout() {
         if (order === -1) order = 999 // 如果找不到，放到最后
       }
 
-      parentGroups[parentId!].children.push({
-        node: graph.value?.getCellById(node.id) as Node,
-        order,
-      })
+      const graphNode = graph.value?.getCellById(node.id) as Node
+      if (graphNode) {
+        parentGroups[parentId!].children.push({
+          node: graphNode,
+          order,
+        })
+      }
     } else {
       // 根节点保持原位置
       const graphNode = graph.value?.getCellById(node.id) as Node
       const pos = g.node(node.id)
-      graphNode.position(pos.x, pos.y)
+      if (graphNode && pos) {
+        graphNode.position(pos.x, pos.y)
+      }
     }
   })
 
@@ -148,7 +148,9 @@ export function layout() {
     group.children.forEach((child, index) => {
       const newX = startX + index * (width + 16)
       const currentPos = child.node.position()
-      child.node.position(newX, currentPos.y)
+      if (currentPos) {
+        child.node.position(newX, currentPos.y)
+      }
     })
   })
 

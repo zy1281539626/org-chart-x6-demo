@@ -374,7 +374,6 @@ export function moveNodeToParentById(
   // 检查节点是否已经是该父节点的子节点
   const currentParentId = getParentId(targetNode.id)
   if (currentParentId === newParentNode.id) {
-    console.log('Node is already a child of the target parent')
     // 如果只是调整位置，仍然执行重排
     if (insertPosition !== undefined) {
       rearrangeNodesWithInsertPositionById(targetNode.id, newParentNode.id, insertPosition)
@@ -385,6 +384,16 @@ export function moveNodeToParentById(
 
   // 移除当前节点的边连接（只移除与父节点的连接，保留子节点连接）
   removeNodeEdgesByIds(targetNode.id)
+
+  // 从旧父节点的childrenOrder中移除该节点
+  if (currentParentId && childrenOrder.value[currentParentId]) {
+    const oldParentChildren = childrenOrder.value[currentParentId]
+    const nodeIndex = oldParentChildren.indexOf(targetNode.id)
+    if (nodeIndex > -1) {
+      oldParentChildren.splice(nodeIndex, 1)
+      childrenOrder.value[currentParentId] = [...oldParentChildren]
+    }
+  }
 
   // 创建新的父子连接
   const newEdge = createEdge(newParentNode, targetNode)
@@ -407,9 +416,6 @@ function rearrangeNodesWithInsertPositionById(
   newParentId: string,
   insertPosition: number,
 ) {
-  console.log(
-    `Rearranging nodes: moving ${movedNodeId} to parent ${newParentId} at position ${insertPosition}`,
-  )
   const newNodeOrder: Node[] = []
   const visited = new Set<string>()
   // 递归添加节点及其子节点
@@ -452,7 +458,6 @@ function rearrangeNodesWithInsertPositionById(
       newNodeOrder.push(node as Node)
     }
   })
-  console.log('New node order:', newNodeOrder)
   nodes.value = newNodeOrder
 }
 
@@ -533,7 +538,7 @@ export function getNodeParent(node: Node) {
       parentNode,
       parentChildrenCount: parentChildren.length,
       parentChildrenNames: parentChildren.map((nodeId: string) => {
-        return graph.value?.getCellById(nodeId).getAttrByPath('.name/text')
+        return graph.value?.getCellById(nodeId)?.getAttrByPath('.name/text')
       }),
     }
   }
@@ -551,7 +556,7 @@ export function getNodeCurrent(node: Node, dragNode: Node) {
       parentNode,
       parentChildrenCount: parentChildren.length,
       parentChildrenNames: parentChildren.map((nodeId: string) => {
-        return graph.value?.getCellById(nodeId).getAttrByPath('.name/text')
+        return graph.value?.getCellById(nodeId)?.getAttrByPath('.name/text')
       }),
     }
   } else {

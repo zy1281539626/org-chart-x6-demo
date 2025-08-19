@@ -188,20 +188,10 @@ export class DragEventHandler implements EventHandler {
     let index = 0
     if (deltaX > 0 && deltaY < 0) {
       // 第一象限 (右上)
-      // 一、二象限相交节点父级信息
       const parentNodeInfo = getNodeParent(maxIntersection.node)
       if (!parentNodeInfo?.parentNode) {
         return
       }
-      console.log('=======================================')
-      console.log('相交节点index:', parentNodeInfo.index)
-      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
-      console.log(
-        '子节点个数:',
-        parentNodeInfo.parentChildrenCount,
-        parentNodeInfo.parentChildrenNames,
-      )
-
       isSameParent = isSameParentNode(this.state.dragNode!, maxIntersection.node)
 
       if (parentNodeInfo?.parentChildrenCount === 0) {
@@ -212,6 +202,8 @@ export class DragEventHandler implements EventHandler {
         }
         index = (parentNodeInfo?.index || 0) + 1
       }
+
+      console.log('第一象限 最终index:', index)
       this.preMoveParams = {
         parentNode: parentNodeInfo?.parentNode,
         targetNode: this.state.dragNode!,
@@ -226,15 +218,6 @@ export class DragEventHandler implements EventHandler {
       if (!parentNodeInfo?.parentNode) {
         return
       }
-      console.log('=======================================')
-      console.log('相交节点index:', parentNodeInfo.index)
-      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
-      console.log(
-        '子节点个数:',
-        parentNodeInfo.parentChildrenCount,
-        parentNodeInfo.parentChildrenNames,
-      )
-
       isSameParent = isSameParentNode(this.state.dragNode!, maxIntersection.node)
 
       if (parentNodeInfo?.parentChildrenCount === 0) {
@@ -243,7 +226,14 @@ export class DragEventHandler implements EventHandler {
         if (isSameParent && parentNodeInfo?.index === dragNodeInfo?.index + 1) {
           return
         }
-        index = parentNodeInfo.index > 0 ? parentNodeInfo.index : 0
+        if (isSameParent) {
+          index =
+            dragNodeInfo.index < parentNodeInfo.index
+              ? parentNodeInfo.index - 1
+              : parentNodeInfo.index
+        } else {
+          index = parentNodeInfo.index
+        }
       }
 
       console.log('第二象限 最终index:', index)
@@ -261,19 +251,8 @@ export class DragEventHandler implements EventHandler {
       if (!parentNodeInfo?.parentNode) {
         return
       }
-      console.log('=======================================')
-      console.log('相交节点index:', parentNodeInfo.index)
-      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
-      console.log(
-        '子节点个数:',
-        parentNodeInfo.parentChildrenCount,
-        parentNodeInfo.parentChildrenNames,
-      )
-
       isSameParent = dragNodeInfo.parentNode.id === maxIntersection.node.id
-
       index = 0
-
       if (isSameParent && dragNodeInfo.index === 0) {
         return
       }
@@ -293,23 +272,8 @@ export class DragEventHandler implements EventHandler {
       if (!parentNodeInfo?.parentNode) {
         return
       }
-      console.log('=======================================')
-      console.log(
-        '相交节点index:',
-        parentNodeInfo.index,
-        maxIntersection.node.getAttrByPath('.name/text'),
-      )
-      console.log('相交父级节点:', parentNodeInfo.parentNode.getAttrByPath('.name/text'))
-      console.log(
-        '子节点个数:',
-        parentNodeInfo.parentChildrenCount,
-        parentNodeInfo.parentChildrenNames,
-      )
-
       isSameParent = dragNodeInfo.parentNode.id === maxIntersection.node.id
-
       index = childrenCount > 0 ? childrenCount : 0
-      console.log(isSameParent, parentNodeInfo.parentChildrenCount, dragNodeInfo.index + 1)
       if (isSameParent && parentNodeInfo.parentChildrenCount === dragNodeInfo.index + 1) {
         return
       }
