@@ -16,7 +16,6 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "@antv/layout": "1.2.14-beta.8",
     "@antv/x6": "^2.18.1",
     "dagre": "^0.8.5",
     "insert-css": "^2.0.0",

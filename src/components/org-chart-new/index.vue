@@ -22,6 +22,7 @@ const containerRef = ref()
 onMounted(() => {
   graph.value = new Graph({
     container: containerRef.value,
+    // autoResize: true, // 没有设置大小，以父级容器自动
     panning: {
       enabled: true, // 启用画布平移
       eventTypes: ['leftMouseDown'], // 只支持鼠标左键拖拽平移，禁用滚轮平移
@@ -67,6 +68,7 @@ onMounted(() => {
   initializeChildrenOrder()
 
   layout()
+
   graph.value.zoomTo(0.8)
   graph.value.centerContent()
 
