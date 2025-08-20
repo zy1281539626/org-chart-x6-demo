@@ -1,6 +1,5 @@
 import dagre from 'dagre'
 import { childrenOrder, graph, nodes } from '../state'
-import { getParentId } from '../node/hooks'
 import type { Node } from '@antv/x6'
 import { LAYOUT_SPACING, NODE_DIMENSIONS } from '../constants'
 
@@ -81,86 +80,9 @@ export function layout() {
     }
   })
 
-  // 按父节点分组子节点并重新计算X坐标实现居中
-  const parentGroups: Record<
-    string,
-    {
-      parent: Node | null
-      children: { node: Node; order: number }[]
-    }
-  > = {}
-
-  // 分组节点
-  nodes.value.forEach((node) => {
-    const parentId = getParentId(node.id)
-    const parentNode = parentId ? graph.value?.getCellById(parentId) : null
-
-    if (parentNode) {
-      // 有父节点的情况
-      if (!parentGroups[parentId!]) {
-        parentGroups[parentId!] = {
-          parent: parentNode as Node,
-          children: [],
-        }
-      }
-
-      // 获取节点在父节点子数组中的顺序
-      let order = 0
-      if (childrenOrder.value[parentId!]) {
-        order = childrenOrder.value[parentId!].indexOf(node.id)
-        if (order === -1) order = 999 // 如果找不到，放到最后
-      }
-
-      const graphNode = graph.value?.getCellById(node.id) as Node
-      if (graphNode) {
-        parentGroups[parentId!].children.push({
-          node: graphNode,
-          order,
-        })
-      }
-    } else {
-      // 根节点保持原位置
-      const graphNode = graph.value?.getCellById(node.id) as Node
-      const pos = g.node(node.id)
-      if (graphNode && pos) {
-        graphNode.position(pos.x, pos.y)
-      }
-    }
-  })
-
-  // 为每个父节点的子节点重新计算居中位置
-  Object.values(parentGroups).forEach((group) => {
-    if (group.children.length === 0) return
-
-    // 按order排序子节点
-    group.children.sort((a, b) => a.order - b.order)
-
-    const parentBBox = group.parent!.getBBox()
-    const parentCenterX = parentBBox.center.x
-
-    // 计算子节点总宽度
-    const totalChildWidth = group.children.length * width + (group.children.length - 1) * 16
-
-    // 计算起始X坐标，让子节点组整体居中于父节点
-    const startX = parentCenterX - totalChildWidth / 2
-
-    // 重新设置每个子节点的X坐标
-    group.children.forEach((child, index) => {
-      const newX = startX + index * (width + 16)
-      const currentPos = child.node.position()
-      if (currentPos) {
-        child.node.position(newX, currentPos.y)
-      }
-    })
-  })
-
-  // 设置边的顶点
   graphEdges?.forEach((edge) => {
-    const source = edge.getSourceNode()
-    const target = edge.getTargetNode()
-
-    if (!source || !target) return
-
+    const source = edge.getSourceNode()!
+    const target = edge.getTargetNode()!
     const sourceBBox = source.getBBox()
     const targetBBox = target.getBBox()
 

@@ -112,8 +112,8 @@ const onPrint = () => {
 
 <style scoped>
 #chart-container {
-  width: 800px;
-  height: 600px;
+  width: 100%;
+  height: 800px;
   border: 1px solid red;
 }
 </style>
