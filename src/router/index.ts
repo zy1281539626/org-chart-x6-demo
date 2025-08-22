@@ -15,6 +15,10 @@ const router = createRouter({
       path: '/new',
       component: () => import('@/views/NewDemo.vue'),
     },
+    {
+      path: '/dagre',
+      component: () => import('@/views/DagreDemo.vue'),
+    },
   ],
 })
 
